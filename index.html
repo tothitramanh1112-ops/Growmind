@@ -494,30 +494,45 @@ function save() {
     // nếu nhấn vào Bảng xếp hạng thì chạy lệnh tính toán số cây.
     if(id === 'history') drawChart();
     if(id === 'leaderboard') renderLeaderboard(); // Thêm dòng này để cập nhật bảng xếp hạng
+    if(id === 'leaderboard') renderLeaderboard();
 }
 
 function renderLeaderboard() {
     const tbody = document.getElementById('leaderboard-body');
-    const allUsers = Object.keys(accounts); // Lấy danh sách tất cả người dùng
+    
+    // SỬA TẠI ĐÂY: Lấy danh sách tài khoản mới nhất từ LocalStorage thay vì dùng biến cũ
+    const latestAccounts = JSON.parse(localStorage.getItem('gm_accounts')) || {};
+    const allUsers = Object.keys(latestAccounts); 
+    
     let ranking = [];
 
     allUsers.forEach(u => {
-        const userData = JSON.parse(localStorage.getItem('gm_db_' + u)) || { done: 0 };
-        ranking.push({ name: u, done: userData.done || 0 });
+        const userData = JSON.parse(localStorage.getItem('gm_db_' + u));
+        if (userData) {
+            ranking.push({ 
+                name: u, 
+                fullName: userData.fullName || u, 
+                done: userData.done || 0 
+            });
+        }
     });
 
     // Sắp xếp theo số lượng cây giảm dần
     ranking.sort((a, b) => b.done - a.done);
 
+    if (ranking.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px;">Chưa có dữ liệu xếp hạng</td></tr>`;
+        return;
+    }
+
     tbody.innerHTML = ranking.map((user, index) => `
         <tr style="border-bottom: 1px solid #eee; background: ${user.name === currentUser ? '#d8f3dc' : 'transparent'}">
             <td style="padding: 15px; font-weight: bold;">${index + 1}</td>
-            <td>${user.name} ${user.name === currentUser ? ' (Bạn)' : ''}</td>
+            <td>${user.fullName} ${user.name === currentUser ? ' (Bạn)' : ''}</td>
             <td style="text-align: center;">${user.done} 🌳</td>
         </tr>
     `).join('');
 }
-
     function render() {    
     if (!currentUser) return;
 
