@@ -4,9 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GrowMind - Trâm Anh (Full Pro)</title>
+    <meta name="description" content="Ứng dụng quản lý thời gian và học tập Thần Mộc Ký - Trâm Anh">
+    <meta name="theme-color" content="#2d6a4f">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/628/628283.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+.card:active {
+    transform: scale(0.95);
+    transition: 0.1s;
+}
+
+/* Hiệu ứng hào quang cho cây khi ở chế độ bón phân */
+.main[style*="copy"] .card:hover {
+    border: 2px solid orange;
+    box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
+}
     :root { 
         --p: #2d6a4f; 
         --s: #40916c; 
@@ -274,10 +287,10 @@
     </div>
 </div>
 
-        <div id="leaderboard" class="page">
-          <h1>Bảng xếp hạng nhà làm vườn 🏆</h1>
-          <div class="card" style="max-width: 600px; margin: auto;">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+<div id="leaderboard" class="page">
+    <h1>Bảng xếp hạng nhà làm vườn 🏆</h1>
+    <div class="card" style="max-width: 600px; margin: auto; overflow-x: auto;"> <!-- Thêm overflow-x: auto -->
+        <table style="min-width: 400px; width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
                 <tr style="border-bottom: 2px solid var(--p);">
                     <th style="padding: 10px;">Hạng</th>
@@ -805,6 +818,23 @@ function forgotPass() {
         alert("Chúc mừng! Bạn đã đổi mật khẩu mới thành công.");
     } else if (newPassword) {
         alert("Mật khẩu quá ngắn, vui lòng thử lại!");
+    }
+}
+
+function deleteAccount() {
+    if(confirm("CẢNH BÁO: Toàn bộ khu vườn và điểm số của bạn sẽ mất vĩnh viễn. Bạn có chắc chắn muốn xóa không?")) {
+        const pass = prompt("Nhập mật khẩu để xác nhận xóa:");
+        if (pass === db.pass) {
+            localStorage.removeItem('gm_db_' + currentUser);
+            let accs = JSON.parse(localStorage.getItem('gm_accounts'));
+            delete accs[currentUser];
+            localStorage.setItem('gm_accounts', JSON.stringify(accs));
+            localStorage.removeItem('gm_active_user');
+            alert("Đã xóa tài khoản. Tạm biệt bạn!");
+            location.reload();
+        } else {
+            alert("Mật khẩu không đúng!");
+        }
     }
 }
 
