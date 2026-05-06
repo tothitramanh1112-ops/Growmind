@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrowMind - Trâm Anh (Full Pro)</title>
+    <meta name="description" content="Ứng dụng quản lý thời gian và học tập Thần Mộc Ký - Trâm Anh">
+    <meta name="theme-color" content="#2d6a4f">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/628/628283.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.card:active {
+    transform: scale(0.95);
+    transition: 0.1s;
+}
+
+/* Hiệu ứng hào quang cho cây khi ở chế độ bón phân */
+.main[style*="copy"] .card:hover {
+    border: 2px solid orange;
+    box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
+}
+    :root { 
+        --p: #2d6a4f; 
+        --s: #40916c; 
+        --bg: #f8f9fa; 
+        --white: #ffffff; 
+        --sidebar-width: 260px; /* Chiều rộng cố định cho PC */
+    }
+
+    body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        margin: 0; 
+        display: flex; 
+        background: var(--bg); 
+        color: #333;
+    }
+
+    /* --- GIAO DIỆN CHUNG & AUTH --- */
+    #auth { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #e9f5ed; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .auth-card { background: white; padding: 35px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 400px; max-width: 90%; text-align: center; }
+    .auth-card h2 { margin-bottom: 25px; color: var(--p); font-size: 1.8rem; }
+    .auth-tabs { display: flex; margin-bottom: 25px; border-bottom: 1px solid #eee; }
+    .auth-tab { flex: 1; padding: 12px; cursor: pointer; color: #888; transition: 0.3s; }
+    .auth-tab.active { color: var(--p); border-bottom: 3px solid var(--p); font-weight: bold; }
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+    input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 1rem; }
+
+    /* --- SIDEBAR (MÁY TÍNH) --- */
+    .sidebar { 
+        width: var(--sidebar-width); 
+        background: var(--white); 
+        height: 100vh; 
+        position: fixed; 
+        top: 0; 
+        left: 0;
+        padding: 30px 20px; 
+        border-right: 1px solid #eee; 
+        display: flex; 
+        flex-direction: column;
+        z-index: 1000;
+        box-sizing: border-box;
+    }
+    .nav-item { 
+        padding: 14px 18px; 
+        margin: 6px 0; 
+        border-radius: 14px; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        color: #555; 
+        transition: all 0.3s ease;
+    }
+    .nav-item i { width: 20px; font-size: 1.1rem; }
+    .nav-item:hover { background: #f0fdf4; color: var(--p); }
+    .nav-item.active { background: #d8f3dc; color: var(--p); font-weight: bold; }
+
+    /* --- NỘI DUNG CHÍNH (MÁY TÍNH) --- */
+    .main { 
+        margin-left: var(--sidebar-width); 
+        padding: 40px; 
+        flex: 1; 
+        min-height: 100vh;
+        width: calc(100% - var(--sidebar-width));
+        box-sizing: border-box;
+    }
+    .page { display: none; width: 100%; animation: fadeIn 0.5s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* --- CẤU TRÚC CARD & GRID (MÁY TÍNH) --- */
+    .grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); 
+        gap: 25px; 
+        margin-top: 20px;
+    }
+    .card { 
+        background: white; 
+        padding: 30px; 
+        border-radius: 20px; 
+        border: 1px solid #f0f0f0; 
+        text-align: center; 
+        position: relative; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+    
+    .btn { background: var(--p); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; }
+    .btn:hover { background: var(--s); filter: brightness(1.1); }
+    .btn-link { background: none; border: none; color: #888; font-size: 0.9em; text-decoration: underline; cursor: pointer; margin-top: 15px; }
+
+    .progress { background: #eee; height: 12px; border-radius: 10px; margin: 15px 0; overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, var(--p), var(--s)); transition: 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .locked { filter: grayscale(1); opacity: 0.5; pointer-events: none; }
+
+    /* --- BẢNG XẾP HẠNG --- */
+    table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+    th { color: #888; font-weight: 500; padding: 10px; }
+    tr { transition: 0.3s; }
+
+    /* --- GIAO DIỆN ĐIỆN THOẠI (GIỮ NGUYÊN GỐC) --- */
+    @media (max-width: 768px) {
+        .sidebar {
+            display: flex !important;
+            width: 100% !important;
+            height: auto !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            top: auto !important;
+            left: 0 !important;
+            flex-direction: row !important;
+            padding: 5px 0 !important;
+            z-index: 10000;
+            background: var(--p) !important;
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.2);
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            border-right: none !important;
+        }
+        .sidebar .nav-item {
+            color: white !important;
+            flex-direction: column !important;
+            min-width: 75px !important;
+            font-size: 10px !important;
+            padding: 8px 5px !important;
+            margin: 0 !important;
+            gap: 4px !important;
+        }
+        .sidebar .nav-item i { color: white !important; font-size: 18px !important; }
+        .sidebar .nav-item.active {
+            background: #d8f3dc !important;
+            color: #2d6a4f !important;
+            border-radius: 12px !important;
+            font-weight: bold !important;
+            margin: 5px !important;
+        }
+        .sidebar .nav-item.active i { color: #2d6a4f !important; }
+        .sidebar h2, .sidebar-user { display: none !important; }
+        
+        .main {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding: 20px !important;
+            padding-bottom: 100px !important;
+        }
+        .sidebar::-webkit-scrollbar { height: 0px; }
+    }
+</style>
+    </head>
+<body>
+
+    <div id="auth">
+        <div class="auth-card">
+            <h2>🌱 GrowMind</h2>
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="tab-login" onclick="switchAuth('login')">Đăng nhập</div>
+                <div class="auth-tab" id="tab-reg" onclick="switchAuth('reg')">Đăng ký</div>
+            </div>
+
+            <div id="form-login" class="auth-form active">
+                <input type="text" id="lU" placeholder="Tên đăng nhập">
+                <input type="password" id="lP" placeholder="Mật khẩu">
+                <button onclick="handleLogin()" class="btn">Vào vườn thôi</button>
+                <button onclick="forgotPass()" class="btn-link">Quên mật khẩu?</button>
+            </div>
+
+            <div id="form-reg" class="auth-form">
+                <input type="text" id="rFullName" placeholder="Họ và tên của bạn (Ví dụ: Trâm Anh)">
+                <input type="text" id="rU" placeholder="Tên đăng nhập (viết liền không dấu, ví dụ: tramanh123)">
+                <input type="email" id="auth-phone" placeholder="Email của bạn">
+                <input type="password" id="rP" placeholder="Mật khẩu (ít nhất 8 ký tự)">
+                <button onclick="register()" class="btn">Tạo tài khoản</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h2 style="color:var(--p)">GrowMind</h2>
+        <div class="nav-item active" onclick="tab('home', this)"><i class="fa fa-home"></i> Trang chủ</div>
+        <div class="nav-item" onclick="tab('garden', this)"><i class="fa fa-leaf"></i> Khu vườn</div>
+        <div class="nav-item" onclick="tab('shop', this)"><i class="fa fa-shopping-cart"></i> Cửa hàng</div>
+        <div class="nav-item" onclick="tab('goals', this)"><i class="fa fa-bullseye"></i> Mục tiêu</div>
+        <div class="nav-item" onclick="tab('history', this)"><i class="fa fa-chart-line"></i> Lịch sử</div>
+        <div class="nav-item" onclick="tab('leaderboard', this)"><i class="fa fa-trophy"></i> Bảng xếp hạng</div>
+        <div class="nav-item" onclick="tab('account', this)"><i class="fa fa-user-cog"></i> Tài khoản</div>
+        <div class="nav-item" onclick="logout()" style="color:red; margin-top:20px;"><i class="fa fa-sign-out-alt"></i> Đăng xuất
+</div> 
+    </div>
+
+    <div class="main">
+        <div id="home" class="page active">
+            <h1>Chào <span id="user-name"></span>! 🌿</h1>
+            <div class="grid">
+                <div class="card"><h2 id="timer">00:00</h2><button onclick="toggle()" id="tBtn" class="btn">Bắt đầu học</button></div>
+                <div class="card"><h2>⭐ <span id="pts">0</span></h2><p>Điểm thưởng</p></div>
+                <div class="card"><h2>⏱ <span id="total-min">0</span></h2><p>Phút học</p></div>
+                <div class="card"><h2>🔥 <span id="strk">0</span></h2><p>Chuỗi (15p/ngày)</p></div>
+<div class="card" style="text-align: center; margin-top: 20px;">
+    <h3 style="color: var(--p); margin-bottom: 10px;">
+        <i class="fas fa-tree"></i> Cây trưởng thành
+    </h3>
+    <div id="total-done-trees" style="font-size: 2rem; font-weight: bold; color: var(--s);">
+        0
+    </div>
+</div>
+            </div>
+        </div>
+
+        <div id="garden" class="page">
+            <h1>Hạng: <span id="rank-name" style="color:var(--p)">Hạt mầm</span></h1>
+            <div class="grid" id="plants"></div>
+<!-- Nút mở kho -->
+<div onclick="openInventory()" style="position:fixed; bottom:100px; right:20px; background:var(--p); color:white; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:900; box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer;">
+    <i class="fa fa-briefcase" style="font-size:24px;"></i>
+</div>
+
+<!-- Bảng Kho vật phẩm Pop-up -->
+<div id="inventory-popup" class="card" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:90%; max-width:400px; z-index:1001; max-height:70vh; overflow-y:auto; border: 2px solid var(--p);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
+        <h3 style="margin:0; color:var(--p);"><i class="fa fa-archive"></i> Kho vật phẩm</h3>
+        <button onclick="closeInventory()" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div id="inventory-list" class="grid" style="grid-template-columns: 1fr 1fr; gap:10px;">
+        <!-- Vật phẩm sẽ tự hiện ở đây -->
+    </div>
+</div>
+<div id="inv-overlay" onclick="closeInventory()" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;"></div>
+        
+</div>
+
+        <div id="shop" class="page">
+            <h1>Cửa hàng hạt giống</h1>
+            <div class="grid" id="shop-list"></div>
+        </div>
+
+        <div id="goals" class="page">
+            <h1>Mục tiêu cá nhân (+50đ)</h1>
+            <button onclick="addG()" class="btn" style="width:150px">+ Thêm</button>
+            <div id="goal-list" style="margin-top:20px"></div>
+        </div>
+
+        <div id="history" class="page">
+            <h1>Lịch sử nỗ lực</h1>
+            <div class="card" style="width:100%; max-width: 700px; margin: auto;">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+<div id="account" class="page">
+    <h1>Quản lý tài khoản</h1>
+    <div class="card" style="max-width: 500px; margin: auto; text-align: left;">
+        <h3 style="color: var(--p);"><i class="fa fa-key"></i> Đổi mật khẩu</h3>
+        <input type="password" id="oldPass" placeholder="Mật khẩu hiện tại">
+        <input type="password" id="newPass" placeholder="Mật khẩu mới">
+        <input type="password" id="confirmPass" placeholder="Xác nhận mật khẩu mới">
+        <button onclick="changePassword()" class="btn" style="margin-top: 10px;">Cập nhật mật khẩu</button>
+        
+        <hr style="margin: 30px 0; border-top: 1px solid #eee; border-bottom: none;">
+        
+        <h3 style="color: red;"><i class="fa fa-trash"></i> Vùng nguy hiểm</h3>
+        <button onclick="deleteAccount()" class="btn" style="background: red;">Xóa tài khoản vĩnh viễn</button>
+    </div>
+</div>
+
+<div id="leaderboard" class="page">
+    <h1>Bảng xếp hạng nhà làm vườn 🏆</h1>
+    <div class="card" style="max-width: 600px; margin: auto; overflow-x: auto;"> <!-- Thêm overflow-x: auto -->
+        <table style="min-width: 400px; width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--p);">
+                    <th style="padding: 10px;">Hạng</th>
+                    <th>Người dùng</th>
+                    <th style="text-align: center;">Số cây (XP 100)</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Database initialization
+    let currentUser = localStorage.getItem('gm_active_user');
+    let accounts = JSON.parse(localStorage.getItem('gm_accounts')) || {};
+    let db = JSON.parse(localStorage.getItem('gm_db_' + currentUser)) || { 
+        pts: 100, min: 0, streak: 0, lastDate: "", plants: [], goals: [], done: 0, historyData: {} 
+    };
+
+    const shopItems = [
+        {n: 'Xương rồng', i: '🌵', p: 20, req: 0, t: 'seed'},
+            {n: 'Sen đá', i: '🪴', p: 30, req: 0, t: 'seed'},
+            {n: 'Cỏ tròn', i: '🌿', p: 25, req: 0, t: 'seed'},
+            {n: 'Cỏ 4 lá', i: '🍀', p: 50, req: 5, t: 'seed'},
+            {n: 'Hướng dương', i: '🌻', p: 70, req: 10, t: 'seed'},
+            {n: 'Hoa Hồng', i: '🌹', p: 90, req: 15, t: 'seed'},
+            {n: 'Hoa Tulip', i: '🌷', p: 110, req: 20, t: 'seed'},
+            {n: 'Cây Thông', i: '🌲', p: 150, req: 35, t: 'seed'},
+            {n: 'Hoa Lavender', i: '🪻', p: 200, req: 50, t: 'seed'},
+            {n: 'Cây Tùng', i: '🌳', p: 300, req: 80, t: 'seed'},
+            {n: 'Đại thụ', i: '🎋', p: 500, req: 150, t: 'seed'},
+            {n: 'Cây Thần Kỳ', i: '🌟', p: 1000, req: 300, t: 'seed'}, 
+            {n: 'Phân thường (+20)', i: '💩', p: 15, req: 0, t: 'f', v: 20},
+            {n: 'Phân trung cấp (+50)', i: '✨', p: 50, req: 0, t: 'f', v: 50},
+            {n: 'Phân cao cấp (+100)', i: '💎', p: 100, req: 10, t: 'f', v: 100}
+        ];
+
+
+    // Auth Functions
+    function switchAuth(type) {
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        if(type === 'login') {
+            document.getElementById('tab-login').classList.add('active');
+            document.getElementById('form-login').classList.add('active');
+        } else {
+            document.getElementById('tab-reg').classList.add('active');
+            document.getElementById('form-reg').classList.add('active');
+        }
+    }
+
+    // --- HÀM ĐĂNG KÝ (Đã sửa ID khớp với HTML: rU, rP, auth-phone) ---
+
+
+// --- HÀM QUÊN MẬT KHẨU (Đã sửa ID khớp với HTML: lU, auth-phone) ---
+    function logout() {
+    // Xóa tên người dùng đang hoạt động
+    localStorage.removeItem('gm_active_user');
+    
+    // Tải lại trang để hệ thống nhận diện là chưa đăng nhập
+    location.reload();
+}
+    // Học tập & Logic Garden (Giữ nguyên từ code cũ của bạn)
+    let time, sec = 0;
+    function toggle() {
+        const b = document.getElementById('tBtn');
+        if (!time) {
+            time = setInterval(() => { 
+                sec++; 
+                document.getElementById('timer').innerText = new Date(sec*1000).toISOString().substr(14,5); 
+            }, 1000);
+            b.innerText = "Dừng học"; b.style.background = "red";
+        } else {
+            clearInterval(time); time = null;
+            let m = sec / 60;
+            db.min += m;
+            db.pts += Math.floor(m * 2);
+            const today = new Date().toDateString();
+            db.historyData[today] = (db.historyData[today] || 0) + m;
+            if (m >= 15 && db.lastDate !== today) { db.streak++; db.lastDate = today; }
+            sec = 0; document.getElementById('timer').innerText = "00:00";
+            b.innerText = "Bắt đầu học"; b.style.background = "var(--p)";
+            save();
+        }
+    }
+
+   // --- LOGIC KHO VẬT PHẨM MỚI ---
+
+// Thay thế hàm Mua cũ
+function buy(i) {
+    const it = shopItems[i];
+    if (db.pts < it.p) return alert("Học thêm để kiếm điểm nhé!");
+    
+    db.pts -= it.p;
+    
+    // Nếu là hạt giống, cho vào kho thay vì ra vườn ngay
+    if (it.t === 'seed') {
+        if(!db.inventory) db.inventory = [];
+        db.inventory.push({n: it.n, i: it.i, xp: 0, type: 'seed'});
+        alert(`Đã mua ${it.n}! Hãy vào Kho để gieo trồng.`);
+    } else {
+        // Nếu là phân bón, lưu vào mục vật phẩm tiêu hao
+        if(!db.items) db.items = [];
+        let existing = db.items.find(x => x.n === it.n);
+        if(existing) existing.qty++;
+        else db.items.push({n: it.n, i: it.i, v: it.v, qty: 1, type: 'fertilizer'});
+        alert(`Đã mua ${it.n}!`);
+    }
+    save();
+}
+
+function openInventory() {
+    document.getElementById('inventory-popup').style.display = 'block';
+    document.getElementById('inv-overlay').style.display = 'block';
+    renderInventory();
+}
+
+function closeInventory() {
+    document.getElementById('inventory-popup').style.display = 'none';
+    document.getElementById('inv-overlay').style.display = 'none';
+}
+
+function renderInventory() {
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = "";
+    
+    // Hiển thị hạt giống trong kho
+    if(db.inventory) {
+        db.inventory.forEach((item, index) => {
+            list.innerHTML += `
+                <div class="card" style="padding:15px;">
+                    <div style="font-size:30px;">${item.i}</div>
+                    <p style="margin:5px 0;"><b>${item.n}</b></p>
+                    <button class="btn" onclick="plantFromInv(${index})">Gieo trồng</button>
+                </div>`;
+        });
+    }
+
+    // Hiển thị phân bón
+    if(db.items) {
+        db.items.forEach((item, index) => {
+            if(item.qty > 0) {
+                list.innerHTML += `
+                    <div class="card" style="padding:15px;">
+                        <div style="font-size:30px;">${item.i}</div>
+                        <p style="margin:5px 0;"><b>${item.n}</b> (x${item.qty})</p>
+                        <button class="btn" style="background:orange;" onclick="prepFertilize(${index})">Bón phân</button>
+                    </div>`;
+            }
+        });
+    }
+    
+    if(list.innerHTML === "") list.innerHTML = "<p style='grid-column: 1/3; color:#888;'>Kho đang trống...</p>";
+}
+
+// Hàm gieo trồng: Chuyển từ kho ra vườn
+function plantFromInv(index) {
+    const item = db.inventory.splice(index, 1)[0];
+    db.plants.push(item);
+    closeInventory();
+    save();
+    tab('garden', document.querySelectorAll('.nav-item')[1]); // Chuyển về vườn xem cây
+    alert("Đã gieo mầm thành công!");
+}
+
+// Chế độ bón phân tiện lợi
+let selectedFertilizer = null;
+function prepFertilize(index) {
+    selectedFertilizer = index;
+    closeInventory();
+    alert("Chế độ bón phân: Hãy nhấn vào cây ở ngoài vườn để bón!");
+}
+
+function applyFertilizer(plantIdx) {
+    if(selectedFertilizer === null) return;
+    
+    const f = db.items[selectedFertilizer];
+    const p = db.plants[plantIdx];
+    
+    if(p.xp >= 100) return alert("Cây đã trưởng thành rồi!");
+    
+    p.xp = Math.min(100, p.xp + f.v);
+    if(p.xp === 100) db.done++;
+    
+    f.qty--;
+    if(f.qty <= 0) db.items.splice(selectedFertilizer, 1);
+    
+    selectedFertilizer = null; // Tắt chế độ bón phân
+    save();
+    alert("Bón phân thành công!");
+}
+    function addG() { const t = prompt("Mục tiêu học tập?"); if(t) { db.goals.push({t, d: false}); save(); } }
+    function doneG(i) { db.goals[i].d = true; db.pts += 50; save(); }
+
+function save() {
+    if(currentUser) {
+        updateStreak(); // <--- Tính lại streak trước khi lưu
+        localStorage.setItem('gm_db_' + currentUser, JSON.stringify(db));
+        render();
+    }
+}
+   function tab(id, el) {
+    // 1. Ẩn tất cả các trang cũ và hiện trang bạn vừa nhấn vào
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    
+    // 2. Đổi màu nút menu để biết bạn đang ở trang nào
+    document.querySelectorAll('.nav-item').forEach(v => v.classList.remove('active'));
+    el.classList.add('active');
+    
+    // 3. ĐIỀU QUAN TRỌNG: Nếu nhấn vào trang Lịch sử thì vẽ biểu đồ, 
+    // nếu nhấn vào Bảng xếp hạng thì chạy lệnh tính toán số cây.
+    if(id === 'history') drawChart();
+    if(id === 'leaderboard') renderLeaderboard(); // Thêm dòng này để cập nhật bảng xếp hạng
+    if(id === 'leaderboard') renderLeaderboard();
+}
+
+function renderLeaderboard() {
+    const tbody = document.getElementById('leaderboard-body');
+    
+    // SỬA TẠI ĐÂY: Lấy danh sách tài khoản mới nhất từ LocalStorage thay vì dùng biến cũ
+    const latestAccounts = JSON.parse(localStorage.getItem('gm_accounts')) || {};
+    const allUsers = Object.keys(latestAccounts); 
+    
+    let ranking = [];
+
+    allUsers.forEach(u => {
+        const userData = JSON.parse(localStorage.getItem('gm_db_' + u));
+        if (userData) {
+            ranking.push({ 
+                name: u, 
+                fullName: userData.fullName || u, 
+                done: userData.done || 0 
+            });
+        }
+    });
+
+    // Sắp xếp theo số lượng cây giảm dần
+    ranking.sort((a, b) => b.done - a.done);
+
+    if (ranking.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px;">Chưa có dữ liệu xếp hạng</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = ranking.map((user, index) => `
+        <tr style="border-bottom: 1px solid #eee; background: ${user.name === currentUser ? '#d8f3dc' : 'transparent'}">
+            <td style="padding: 15px; font-weight: bold;">${index + 1}</td>
+            <td>${user.fullName} ${user.name === currentUser ? ' (Bạn)' : ''}</td>
+            <td style="text-align: center;">${user.done} 🌳</td>
+        </tr>
+    `).join('');
+}
+    function render() {    
+    if (!currentUser) return;
+
+    // 1. Cập nhật cấp bậc dựa trên số cây đã xong
+    let rank = "Hạt mầm";
+    if (db.done >= 50) rank = "Thần mộc";
+    else if (db.done >= 30) rank = "Cây trưởng thành";
+    else if (db.done >= 15) rank = "Cây non";
+    else if (db.done >= 5) rank = "Mầm hoa";
+    
+    const rankEl = document.getElementById('rank-name');
+    if(rankEl) rankEl.innerText = rank;
+
+    // 2. Cập nhật các chỉ số cơ bản
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('user-name').innerText = db.fullName || currentUser;
+    document.getElementById('pts').innerText = db.pts;
+    document.getElementById('total-min').innerText = Math.round(db.min);
+    document.getElementById('strk').innerText = db.streak;
+    document.getElementById('total-done-trees').innerText = db.done || 0;
+
+    // 3. Hiển thị danh sách cây (CÓ LOGIC BÓN PHÂN)
+    document.getElementById('plants').innerHTML = db.plants.map((p, i) => `
+        <div class="card" onclick="applyFertilizer(${i})" style="cursor:${selectedFertilizer !== null ? 'copy' : 'default'}">
+            <h1>${p.i}</h1>
+            <p>${p.n}</p>
+            <div class="progress"><div class="fill" style="width:${p.xp}%"></div></div>
+            ${p.xp}/100 XP
+        </div>`).join('');
+    
+    // 4. Hiển thị cửa hàng
+    document.getElementById('shop-list').innerHTML = shopItems.map((it, i) => {
+        const lock = db.done < it.req;
+        return `<div class="card ${lock?'locked':''}">
+            <h2>${it.i}</h2><p>${it.n}</p><b>${it.p}đ</b>
+            <button onclick="buy(${i})" class="btn" ${lock?'disabled':''}>
+                ${lock?'Cần '+it.req+' cây':'Mua'}
+            </button>
+        </div>`;
+    }).join('');
+
+    // 5. Hiển thị mục tiêu
+    document.getElementById('goal-list').innerHTML = db.goals.map((g, i) => `
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <span>${g.d?'✅':'🎯'} ${g.t}</span>
+            <div>
+                ${!g.d?`<button onclick="doneG(${i})" style="width:70px" class="btn">Xong</button>`:''}
+                <button onclick="deleteG(${i})" style="width:40px; background:red" class="btn"><i class="fa fa-trash"></i></button>
+            </div>
+        </div>`).join('');       
+}
+    let chart;
+    function drawChart() {
+    const canvas = document.getElementById('myChart');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // 1. Kiểm tra xem đã có dữ liệu học tập nào chưa (Phần 4)
+    const hasData = Object.keys(db.historyData).length > 0;
+    
+    if (!hasData) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Xóa canvas cũ
+        ctx.font = "16px Segoe UI";
+        ctx.fillStyle = "#666";
+        ctx.textAlign = "center";
+        ctx.fillText("Hãy bắt đầu học tập để thấy biểu đồ nhé!", canvas.width / 2, canvas.height / 2);
+        return; 
+    }
+
+    // 2. Chuẩn bị dữ liệu 7 ngày gần nhất
+    const labels = []; 
+    const data = [];
+    for(let i=6; i>=0; i--) {
+        const d = new Date(); 
+        d.setDate(d.getDate()-i);
+        labels.push(d.toLocaleDateString('vi-VN', {weekday:'short'}));
+        data.push(Math.round(db.historyData[d.toDateString()] || 0));
+    }
+
+    // 3. Vẽ biểu đồ với góc bo tròn (borderRadius)
+    if(chart) chart.destroy();
+    chart = new Chart(ctx, { 
+        type: 'bar', 
+        data: { 
+            labels, 
+            datasets: [{ 
+                label: 'Số phút học', 
+                data, 
+                backgroundColor: '#2d6a4f', // Màu xanh đậm đặc trưng của Thần Mộc Ký
+                borderRadius: 5,           // Bo tròn góc cột (Phần bạn yêu cầu)
+                borderSkipped: false       // Đảm bảo bo tròn cả các góc nếu cần
+            }] 
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: { stepSize: 10 } 
+                }
+            },
+            plugins: {
+                legend: { display: false } // Ẩn chú thích cho gọn giao diện
+            }
+        }
+    });
+}
+    window.onload = render;
+function updateStreak() {
+    let streak = 0;
+    let d = new Date();
+    let today = d.toDateString();
+    
+    // TẠI ĐÂY: Đảm bảo biến streak được đặt lại từ đầu để tính toán chính xác
+    db.streak = 0; 
+
+    for (let i = 0; i < 365; i++) {
+        let checkDate = new Date();
+        checkDate.setDate(d.getDate() - i);
+        let dateStr = checkDate.toDateString();
+        let mins = db.historyData[dateStr] || 0;
+
+        if (mins >= 15) {
+            streak++;
+        } else if (dateStr === today) {
+            continue; 
+        } else {
+            break; 
+        }
+    }
+    db.streak = streak;
+}
+window.onload = function() {
+    // 1. Kiểm tra "thẻ ra vào" chính xác
+    const savedUser = localStorage.getItem('gm_active_user');
+    
+    if (savedUser) {
+        currentUser = savedUser;
+        
+        // 2. Lấy dữ liệu của người dùng này
+        const savedData = localStorage.getItem('gm_db_' + currentUser);
+        if (savedData) {
+            db = JSON.parse(savedData);
+        }
+        
+        // 3. Ẩn màn hình đăng nhập ngay lập tức
+        document.getElementById('auth').style.display = 'none';
+        
+        // 4. Chạy hàm render để vẽ lại khu vườn, điểm số...
+        render(); 
+        
+        // 5. Vẽ biểu đồ lịch sử
+        drawChart();
+    } else {
+        // Nếu không thấy user, bắt buộc hiện màn hình đăng nhập
+        document.getElementById('auth').style.display = 'flex';
+    }
+};
+function deleteG(i) {
+    if(confirm("Bạn có chắc chắn muốn xóa mục tiêu này không?")) {
+        db.goals.splice(i, 1); // Lệnh này giúp xóa mục tiêu tại vị trí thứ i trong danh sách
+        save(); // Lưu lại thay đổi và vẽ lại giao diện
+    }
+}
+
+// CHỈ GIỮ LẠI 1 BỘ HÀM NÀY Ở CUỐI SCRIPT
+
+// XÓA HÀM CŨ VÀ DÁN ĐOẠN NÀY VÀO
+function register() {
+    const fullName = document.getElementById('rFullName').value.trim(); // Lấy họ tên
+    const u = document.getElementById('rU').value.trim().toLowerCase(); 
+    const p = document.getElementById('rP').value; 
+    const e = document.getElementById('auth-phone').value;
+
+    if(!fullName || !u || !p || !e) return alert("Vui lòng điền đủ thông tin!");
+    
+    // Kiểm tra trùng Tên đăng nhập (ID hệ thống)
+    if(localStorage.getItem('gm_db_' + u)) return alert("Tên đăng nhập đã tồn tại!");
+    
+    const newUser = {
+        fullName: fullName, // Lưu Họ tên vào cơ sở dữ liệu
+        pass: p, 
+        email: e, 
+        pts: 100, 
+        min: 0, 
+        streak: 0, 
+        done: 0,
+        plants: [], 
+        goals: [], 
+        historyData: {}
+    };
+    
+    localStorage.setItem('gm_db_' + u, JSON.stringify(newUser));
+    
+    let accounts = JSON.parse(localStorage.getItem('gm_accounts')) || {};
+    accounts[u] = true; 
+    localStorage.setItem('gm_accounts', JSON.stringify(accounts));
+    
+    alert("Đăng ký thành công!");
+    switchAuth('login');
+}
+function handleLogin() {
+    const u = document.getElementById('lU').value;
+    const p = document.getElementById('lP').value;
+    const savedData = localStorage.getItem('gm_db_' + u);
+    if (!savedData) return alert("Tài khoản chưa có trên máy này!");
+
+    const userData = JSON.parse(savedData);
+    if (userData.pass === p) {
+        localStorage.setItem('gm_active_user', u);
+        currentUser = u;
+        db = userData;
+        document.getElementById('auth').style.display = 'none'; // Vào thẳng, không reload gây lỗi
+        render(); 
+        alert("Chào mừng trở lại!");
+    } else {
+        alert("Sai mật khẩu!");
+    }
+}
+
+// Hàm đổi mật khẩu mới bạn muốn thêm
+function changePassword() {
+    const oldP = document.getElementById('oldPass').value;
+    const newP = document.getElementById('newPass').value;
+    const confirmP = document.getElementById('confirmPass').value;
+
+    if (oldP !== db.pass) return alert("Mật khẩu cũ không đúng!");
+    if (newP.length < 6) return alert("Mật khẩu mới ít nhất 6 ký tự!");
+    if (newP !== confirmP) return alert("Xác nhận mật khẩu không khớp!");
+
+    db.pass = newP;
+    save(); // Hàm save() sẽ lưu lại toàn bộ db mới vào localStorage
+    alert("Đã đổi mật khẩu thành công!");
+    // Reset ô nhập
+    document.getElementById('oldPass').value = "";
+    document.getElementById('newPass').value = "";
+    document.getElementById('confirmPass').value = "";
+}
+// --- HÀM QUÊN MẬT KHẨU 3 BƯỚC ---
+function forgotPass() {
+    // Bước 1: Nhập tên đăng nhập
+    const username = prompt("Vui lòng nhập tên đăng nhập của bạn:");
+    if (!username) return;
+
+    // Kiểm tra tài khoản có tồn tại không
+    const savedData = localStorage.getItem('gm_db_' + username);
+    if (!savedData) {
+        alert("Tài khoản này không tồn tại trên máy này!");
+        return;
+    }
+
+    const userData = JSON.parse(savedData);
+
+    // Bước 2: Xác nhận Email (Email này phải khớp với email lúc đăng ký)
+    const email = prompt("Nhập email đã đăng ký cho tài khoản " + username + ":");
+    if (!email) return;
+
+    if (userData.email !== email) {
+        alert("Email không chính xác! Không thể khôi phục mật khẩu.");
+        return;
+    }
+
+    // Bước 3: Đổi mật khẩu mới
+    const newPassword = prompt("Xác thực thành công! Mời bạn nhập mật khẩu mới:");
+    if (newPassword && newPassword.length >= 8) {
+        userData.pass = newPassword;
+        // Lưu lại mật khẩu mới vào bộ nhớ
+        localStorage.setItem('gm_db_' + username, JSON.stringify(userData));
+        alert("Chúc mừng! Bạn đã đổi mật khẩu mới thành công.");
+    } else if (newPassword) {
+        alert("Mật khẩu quá ngắn, vui lòng thử lại!");
+    }
+}
+
+function deleteAccount() {
+    if(confirm("CẢNH BÁO: Toàn bộ khu vườn và điểm số của bạn sẽ mất vĩnh viễn. Bạn có chắc chắn muốn xóa không?")) {
+        const pass = prompt("Nhập mật khẩu để xác nhận xóa:");
+        if (pass === db.pass) {
+            localStorage.removeItem('gm_db_' + currentUser);
+            let accs = JSON.parse(localStorage.getItem('gm_accounts'));
+            delete accs[currentUser];
+            localStorage.setItem('gm_accounts', JSON.stringify(accs));
+            localStorage.removeItem('gm_active_user');
+            alert("Đã xóa tài khoản. Tạm biệt bạn!");
+            location.reload();
+        } else {
+            alert("Mật khẩu không đúng!");
+        }
+    }
+}
+
+</script>
+</body>
+</html>
